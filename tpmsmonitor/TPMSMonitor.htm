@@ -1,0 +1,181 @@
+<!--
+  Web UI page plugin:
+    TPMS Monitor
+  
+  Dependencies:
+    - "tpmsmonitor.js" module plugin (background tpms monitoring and notifications)
+  
+  Installation:
+    - Type:    Page
+    - Page:    /usr/TPMSMonitor
+    - Label:   TPMSMonitor
+    - Menu:    Config
+    - Auth:    Cookie
+-->
+
+<style>
+#auxchart {
+  height: 80vh;
+  min-height: 265px;
+}
+.fullscreened #auxchart {
+  height: 100vh;
+}
+.highcharts-graph {
+  stroke-width: 4px;
+}
+.night .highcharts-color-1 {
+  fill: #c3c3c8;
+  stroke: #c3c3c8;
+}
+</style>
+
+<div class="panel panel-primary">
+  <div class="panel-heading">TPMS Monitor</div>
+  <div class="panel-body">
+    <form class="form-horizontal" id="tpmsform" onsubmit="submitConfig()">
+      <div class="form-group">
+        <label class="control-label col-sm-3">Current Front Tire Pressures:</label>
+        <div class="form-control-static" id="currentFrontTpms">
+          <span id="currentFrontTpms" class="value"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Current Rear Tire Pressures:</label>
+        <div class="form-control-static" id="currentFrontTpms">
+          <span id="currentRearTpms" class="value"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="TPMSWarning" class="control-label col-sm-3">Minimum Tire Pressure:</label>
+        <div class="col-sm-9">
+          <input name="tpms_min" id="tpmsMin" type="number" step="0.1" class="form-control" maxlength="5" size="5"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="TPMSWarning" class="control-label col-sm-3">Notify on additional pressure drops of:</label>
+        <div class="col-sm-9">
+          <input name="tpms_deviation" id="tpmsRenotify" type="number" step="0.1" class="form-control" maxlength="5" size="5"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="TPMSWarning" class="control-label col-sm-3">Maximum Tire Pressure:</label>
+        <div class="col-sm-9">
+          <input name="tpms_max" id="tpmsMax" type="number" step="0.1" class="form-control" maxlength="5" size="5"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="TPMSWarning" class="control-label col-sm-3">Max difference across all tires:</label>
+        <div class="col-sm-9">
+          <input name="tpms_deviation" id="tpmsDeviation" type="number" step="0.1" class="form-control" maxlength="5" size="5"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3" for="pressure-units">Units:</label>
+        <div class="col-sm-9">
+          <div id="pressure-units" class="btn-group" data-toggle="buttons">
+            <label class="btn btn-default" id="psiunitslabel">
+              <input type="radio" name="units_distance" value="p" id="psiunits" autocomplete="off"> psi</input>
+            </label>
+            <label class="btn btn-default" id="kpaunitslabel">
+              <input type="radio" name="units_distance" value="k" id="kpaunits" autocomplete="off"> kPA</input>
+            </label>
+          </div>
+       </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Enable TPMS Monitor:</label>
+        <div class="col-sm-9">
+          <input name="enable_tpmsmonitor" id="tpmsEnabled" type="checkbox" />
+        </div>
+      </div>
+      <hr />
+      <div>
+        <div><button type="submit">Save</button></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function kpaToPsi(kpaVal) {
+  console.log("Converting " + kpaVal)
+  result = Math.round((parseFloat(kpaVal) + Number.EPSILON) * 1.45038)/10
+  console.log("Result: " + result)
+  return result
+}
+function populateCurrentPressures(unitsShort) {
+  loadcmd('tpms status').then(function(output){
+    units="kPa"
+    console.log("Loading pressures, " + unitsShort)
+    if (unitsShort == 'p') {
+        units="psi"
+    }
+    tokens = output.split(':')
+    frontValues = '-'
+    rearValues = '-'
+    if (tokens.length > 5) {
+      fl = tokens[2].split('kPa')[0].trim()
+      if (units == "psi") {
+          fl = kpaToPsi(fl)
+      }
+      frontValues = "Left: " + fl + units
+      fr = tokens[3].split('kPa')[0].trim()
+      if (units == "psi") {
+          fr = kpaToPsi(fr)
+      }
+      frontValues += "     Right: " + fr + units
+
+      rl = tokens[4].split('kPa')[0].trim()
+      if (units == "psi") {
+          rl = kpaToPsi(rl)
+      }
+      rearValues = "Left: " + rl + units
+      rr = tokens[5].split('kPa')[0].trim()
+      if (units == "psi") {
+          rr = kpaToPsi(rr)
+      }
+      rearValues += "     Right: " + rr + units
+    }
+    span = document.getElementById('currentFrontTpms').textContent = frontValues
+    span = document.getElementById('currentRearTpms').textContent = rearValues
+  })
+}
+$("#pressure-units :input").change(function() {
+  populateCurrentPressures(this.value)
+});
+
+loadcmd('script eval tpmsmonitor.info()').then(function(jsonoutput){
+  var fulljson = JSON.parse(jsonoutput)
+  var cfg = fulljson.cfg
+
+  if (cfg.enabled == 'true') {
+    document.getElementById('tpmsEnabled').checked = true
+  } else {
+    document.getElementById('tpmsEnabled').checked = false
+  }
+  document.getElementById('tpmsDeviation').value = parseFloat(cfg. deviation)
+  document.getElementById('tpmsMin').value = parseFloat(cfg.min)
+  document.getElementById('tpmsMax').value = parseFloat(cfg.max)
+  document.getElementById('tpmsRenotify').value = parseFloat(cfg.renotifyDrop)
+  if (cfg. units == 'p') {
+    document.getElementById('psiunits').click()
+  } else {
+    document.getElementById('kpaunits').click()
+  }
+});
+
+function submitConfig(){
+  var units = 'k'
+  if (document.getElementById('psiunits').checked) {
+    units = 'p'
+  }
+  loadcmd('script eval \'tpmsmonitor.setConfig('
+      + document.getElementById('tpmsMin').value + ', '
+      + document.getElementById('tpmsRenotify').value + ', '
+      + document.getElementById('tpmsMax').value + ', '
+      + document.getElementById('tpmsDeviation').value + ', "'
+      + units + '", "'
+      + document.getElementById('tpmsEnabled').checked + '")\'')
+};
+</script>
