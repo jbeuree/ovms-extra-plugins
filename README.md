@@ -1,5 +1,5 @@
 # ovms-extra-plugins
-Some additional ovms plugins
+Some additional [Open Vehicles Monitoring System](https://www.openvehicles.com/) plugins
 
 ## Reminders
 This provides the ability to raise a notification as a reminder to plug in. It uses a set location to determine when the vehicle is parked at the desired charge location, and uses set times to determine when the notification should be sent.
