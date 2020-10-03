@@ -1,0 +1,163 @@
+<!--
+  Web UI page plugin:
+    Reminders
+  
+  Dependencies:
+    - "reminders.js" module plugin 
+  
+  Installation:
+    - Type:    Page
+    - Page:    /usr/Reminders
+    - Label:   Reminders
+    - Menu:    Config
+    - Auth:    Cookie
+-->
+
+<style>
+#auxchart {
+  height: 80vh;
+  min-height: 265px;
+}
+.fullscreened #auxchart {
+  height: 100vh;
+}
+.highcharts-graph {
+  stroke-width: 4px;
+}
+.night .highcharts-color-1 {
+  fill: #c3c3c8;
+  stroke: #c3c3c8;
+}
+</style>
+
+<div class="panel panel-primary">
+  <div class="panel-heading">Reminders</div>
+  <div class="panel-body">
+    <form class="form-horizontal" id="tpmsform" onsubmit="submitConfig()">
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Home charging gps location:</label>
+        <div class="col-sm-9">
+          <select name="locationChoice" id="locationChoice" class="form-control">
+            <option value="">-</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Notifications allowed all day:</label>
+        <div class="col-sm-9">
+          <input name="reminders_allday" id="remindersAllDay" onclick='handleAllDayClick(this);' type="checkbox" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Allowed notification start time:</label>
+        <div class="col-sm-9">
+          <input name="reminders_starttime" id="remindersStartTime" type="time" class="form-control"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Allowed notification end time:</label>
+        <div class="col-sm-9">
+          <input name="reminders_endtime" id="remindersEndTime" type="time" class="form-control"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Home arrival notification delay (minutes):</label>
+        <div class="col-sm-9">
+          <input name="reminders_delay" id="remindersDelay" type="number" step="1" class="form-control" maxlength="3" size="3"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Disable notification at charge(%):</label>
+        <div class="col-sm-9">
+          <input name="reminders_soc" id="remindersSoc" type="number" step="1" class="form-control" maxlength="3" size="3"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="Reminders" class="control-label col-sm-3">Ignore time and always notify if charge less than (%):</label>
+        <div class="col-sm-9">
+          <input name="reminders_socOverride" id="remindersSocOverride" type="number" step="1" class="form-control" maxlength="3" size="3"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-3">Enable Reminders:</label>
+        <div class="col-sm-9">
+          <input name="enable_reminders" id="remindersEnabled" type="checkbox" />
+        </div>
+      </div>
+      <hr />
+      <div>
+        <div><button type="submit">Save</button></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function handleAllDayClick(cb) {
+  handleDisableFields(cb.checked)
+}
+
+function handleDisableFields(allDay) {
+  document.getElementById("remindersStartTime").disabled = allDay
+  document.getElementById("remindersEndTime").disabled = allDay
+  document.getElementById('remindersSocOverride').disabled = allDay
+}
+
+loadcmd('script eval reminders.info()').then(function(jsonoutput){
+  var fulljson = JSON.parse(jsonoutput)
+  var cfg = fulljson.cfg
+
+  loadcmd('location list').then(function(output){
+    var outputLines = output.split(/\r?\n/)
+    var selectItem = document.getElementById('locationChoice')
+    // Current format has a note at the end, so ignore the last line
+    for (let i = 0; i < outputLines.length; i++) {
+      var line = outputLines[i]
+      if ((line != "") && (! line.includes("NOTE: Actions"))) {
+        locationName = line.split(':')[0]
+        if (locationName.charAt(0) == '*') {
+          locationName = locationName.substring(1)
+        }
+        var optElement = document.createElement('option');
+        optElement.appendChild( document.createTextNode(locationName) );
+        optElement.value = locationName; 
+        selectItem.appendChild(optElement); 
+      }
+    }
+    selectItem.value = cfg.homeLocation
+  });
+
+
+  if (cfg.enabled || cfg.enabled == 'true') {
+    document.getElementById('remindersEnabled').checked = true
+  } else {
+    document.getElementById('remindersEnabled').checked = false
+  }
+
+  document.getElementById('remindersStartTime').value = cfg.pluginTimeStart
+  document.getElementById('remindersEndTime').value = cfg. pluginTimeEnd
+  document.getElementById('remindersDelay').value = parseFloat(cfg.checkDelay)
+  document.getElementById('remindersSoc').value = cfg.targetCharge
+  document.getElementById('remindersSocOverride').value = cfg.overrideNotificationCharge
+  if (cfg. pluginTimeAllDay || cfg. pluginTimeAllDay == 'true') {
+    document.getElementById('remindersAllDay').checked = true
+      handleDisableFields(true)
+  } else {
+    document.getElementById('remindersAllDay').checked = false
+    handleDisableFields(false)
+  }
+});
+
+
+function submitConfig(){
+  loadcmd('script eval \'reminders.setConfiguration("' + document.getElementById("remindersStartTime").value
+          + '", "' + document.getElementById("remindersEndTime").value
+          + '", "' + document.getElementById('remindersDelay').value
+          + '", "' + document.getElementById('locationChoice').value
+          + '", "' + document.getElementById('remindersSoc').value
+          + '", "' + document.getElementById('remindersSocOverride').value
+          + '", "' + document.getElementById('remindersEnabled').checked
+          + '", "' + document.getElementById('remindersAllDay').checked
+          + '")\'')
+};
+</script>
