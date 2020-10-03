@@ -18,6 +18,10 @@ When the conditions are met, an alert/usr.reminders.plugin event will be raised.
    * Menu: Tools
    * Auth: Cookie
 
+### Configuration
+
+<img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/Reminders.png" width="600">
+
 ## TPMS Monitor
 This provides simple monitoring of tire pressures. As no current event framework is provided for TPMS, this plugin will periodically poll for the current tire pressures. It provides the ability to notify if pressures beyond set values, or if too large a difference is seen between the tires. As this is poll based, it is not suitable for notifying immediate problems with tire pressures, and is instead more suitable for identifying gradual leaks.
 
@@ -34,3 +38,7 @@ This will raise alert/usr.tpmsmonitor.lowtirepressure events.
    * Label: TPMSMonitor
    * Menu: Tools
    * Auth: Cookie
+
+### Configuration
+
+<img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/TPMSMonitor.png" width="600">
