@@ -4,7 +4,7 @@ Some additional [Open Vehicles Monitoring System](https://www.openvehicles.com/)
 ## Reminders
 This provides the ability to raise a notification as a reminder to plug in. It uses a set location to determine when the vehicle is parked at the desired charge location, and uses set times to determine when the notification should be sent.
 
-When the conditions are met, an alert/usr.reminders.plugin event will be raised.
+When the conditions are met and vehicle is not plugged in, an alert/usr.reminders.plugin event will be raised.
 
 ### Installation
 1. Save [reminders.js](https://raw.githubusercontent.com/jbeuree/ovms-extra-plugins/main/reminders/reminders.js) as /store/scripts/lib/reminders.js
