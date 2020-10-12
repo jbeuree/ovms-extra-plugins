@@ -174,15 +174,12 @@ exports.delayTimeCheck = function() {
   // Ensure the state of charge is less than set
   if ((cfg.targetCharge > 0) &&
       (currentCharge >= cfg.targetCharge)) {
-    OvmsNotify.Raise("alert", "usr.reminders.plugin", "Would not normally be a notification - vehicle charge (" + currentCharge + ") above threshold");
+    return
   }
 
   // Check (1) location and (2) plug status
   if (state.inLocation && !state.chargeReady) {
     OvmsNotify.Raise("alert", "usr.reminders.plugin", "Vehicle at home location but not plugged in, charge at " + currentCharge + "%");
-  }
-  else {
-    OvmsNotify.Raise("alert", "usr.reminders.plugin", "Usually no notification, all good");
   }
 }
 
