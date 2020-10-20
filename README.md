@@ -42,3 +42,22 @@ This will raise alert/usr.tpmsmonitor.lowtirepressure events.
 ### Configuration
 
 <img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/TPMSMonitor.png" width="600">
+
+## Scheduled Climate Control
+Start the climate control using a timer. Currently only has individual timers (not recurring)
+
+### Installation
+1. Save [schedule.js](https://raw.githubusercontent.com/jbeuree/ovms-extra-plugins/main/schedule/schedule.js) as /store/scripts/lib/schedule.js
+2. Add line to /store/scripts/ovmsmain.js:
+   * schedule = require("lib/schedule");
+3. Issue script reload or evaluate the require line
+4. Install [Schedule.htm web](https://raw.githubusercontent.com/jbeuree/ovms-extra-plugins/main/schedule/Schedule.htm) plugin, recommended setup:
+   * Type: Page
+   * Page: /usr/Schedule
+   * Label: Schedule
+   * Menu: Tools
+   * Auth: Cookie
+
+### Configuration
+
+<img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/Reminders.png" width="600">
