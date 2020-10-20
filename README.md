@@ -60,4 +60,4 @@ Start the climate control using a timer. Currently only has individual timers (n
 
 ### Configuration
 
-<img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/Reminders.png" width="600">
+<img src="https://github.com/jbeuree/ovms-extra-plugins/raw/main/images/Schedule.png" width="600">
