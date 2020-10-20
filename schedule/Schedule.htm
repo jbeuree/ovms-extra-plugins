@@ -1,0 +1,154 @@
+<!--
+  Web UI page plugin:
+    Schedule
+  
+  Dependencies:
+    - "schedule.js" module plugin 
+  
+  Installation:
+    - Type:    Page
+    - Page:    /usr/Schedule
+    - Label:   Schedule
+    - Menu:    Config
+    - Auth:    Cookie
+-->
+
+<style>
+#auxchart {
+  height: 80vh;
+  min-height: 265px;
+}
+.fullscreened #auxchart {
+  height: 100vh;
+}
+.highcharts-graph {
+  stroke-width: 4px;
+}
+.night .highcharts-color-1 {
+  fill: #c3c3c8;
+  stroke: #c3c3c8;
+}
+.center-block {
+  display: block;
+  margin-right: auto;
+  margin-left: auto;
+}
+</style>
+
+<div class="panel panel-primary">
+  <div class="panel-heading">Schedule</div>
+  <div class="panel-body">
+    <form class="form-horizontal" id="scheduleform" onsubmit="submitConfig()">
+      <div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th width="10%"/>
+              <th width="90%">Climate Control Start Time</th>
+            <tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr id="deleteButtonRow">
+              <td>
+                <button type="button" class="btn btn-success" onclick="addScheduleItem()">
+                  <strong>+</strong>
+                </button>
+              </td>
+              <td>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <hr />
+      <div class="form-group">
+        <label class="control-label col-sm-3">Enable Scheduling:</label>
+        <div class="col-sm-9">
+          <input name="enable_schedule" id="scheduleEnabled" type="checkbox" />
+        </div>
+      </div>
+      <hr/>
+      <div class="col-sm-offset-3 col-sm-9">
+        <div><button type="submit">Save</button></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function removeScheduleItem() {
+  var parent = this.parentElement.parentElement
+  parent.remove()
+}
+
+function addTimeSchedule(time) {
+  var inputElement = addScheduleItem()
+  inputElement.value = time
+}
+
+function addScheduleItem() {
+  var container = document.getElementById('tableBody')
+  var tr=document.createElement('tr');
+
+  var tdButton=document.createElement('td');
+  var button = document.createElement('button');
+  button.classList.add('btn')
+  button.classList.add("btn-danger")
+  button.type = 'button'
+  button.onclick=removeScheduleItem
+  var strong=document.createElement('strong');
+  strong.innerHTML = 'X'
+  button.appendChild(strong)
+  tdButton.appendChild(button)
+  tr.appendChild(tdButton)
+
+  var tdInput = document.createElement('td');
+  var input = document.createElement('input')
+  input.type = 'datetime-local'
+  input.name = 'scheduleItem'
+  tdInput.appendChild(input)
+  tr.appendChild(tdInput)
+
+  var last = document.getElementById('deleteButtonRow')
+  var tdSchedule = document.createElement('td')
+  tr.appendChild(tdSchedule)
+
+  //container.appendChild(tr)
+  container.insertBefore(tr, last)
+  return input
+}
+
+loadcmd('script eval schedule.info()').then(function(jsonoutput){
+  var fulljson = JSON.parse(jsonoutput)
+  var cfg = fulljson.cfg
+
+  if (cfg.enabled) {
+    document.getElementById('scheduleEnabled').checked = true
+  } else {
+    document.getElementById('scheduleEnabled').checked = false
+  }
+
+  for (i = 0; i < cfg.startTimes.times.length; i++) {
+    addTimeSchedule(cfg.startTimes.times[i])
+  }
+});
+
+function getScheduledTimes() {
+  var schedules = document.getElementsByName('scheduleItem')
+  if (schedules.length == 0) {
+    return '""'
+  }
+
+  var json = { startTimes: [] }
+  for (i = 0; i < schedules.length; i++) {
+    var sched = schedules[i].value
+    json.startTimes.push(sched)
+  }
+  return JSON.stringify(json)
+}
+
+function submitConfig(){
+  loadcmd('script eval \'schedule.setConfiguration("' + document.getElementById('scheduleEnabled').checked
+          + '", ' + getScheduledTimes() + ')\'') 
+};
+</script>
