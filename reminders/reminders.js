@@ -19,6 +19,8 @@
  *  - usr reminders.pluginTimeEnd   Time of day to remind to plug in
  *  - usr reminders.pluginTimeAllDay Time of day to remind to plug in
  *  - usr reminders.checkDelay      Amount of time to wait after arriving before reminding
+ *  - usr reminders.targetCharge    Desired charge level - only notify if less than this
+ *  - usr reminders.overrideNotificationCharge  Allow reminders outside of the start/end times if charge is less than this
  * 
  * 
  */
@@ -179,7 +181,7 @@ exports.delayTimeCheck = function() {
 
   // Check (1) location and (2) plug status
   if (state.inLocation && !state.chargeReady) {
-    OvmsNotify.Raise("alert", "usr.reminders.plugin", "Vehicle at home location but not plugged in, charge at " + currentCharge + "%");
+    OvmsNotify.Raise("alert", "usr.reminders.plugin", "Vehicle at home location but not plugged in, charge at " + currentCharge);
   }
 }
 
