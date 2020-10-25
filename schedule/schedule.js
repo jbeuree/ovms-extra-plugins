@@ -30,6 +30,9 @@ var state = {
 
 // Read config:
 function readconfig() {
+  // Start by clearing out any current schedules and replace with the new set
+  removeAllSchedules()
+
   Object.assign(cfg, OvmsConfig.GetValues("usr", "schedule."));
   if (cfg.enabled == "true") {
     cfg.enabled = true
@@ -37,6 +40,11 @@ function readconfig() {
     cfg.enabled = false
   }
   cfg.startTimes = JSON.parse(cfg.startTimes)
+
+  // Only enable the new config if enable is set
+  if (cfg.enabled) {
+    enableAllSchedules()
+  }
 }
 
 function removeAllSchedules() {
@@ -134,22 +142,15 @@ function startClimateControl(msg, data) {
     state.monitoredEvents.events.splice(index, 1)
   }
 
-
-  // Double check it's enabled before starting the climate control
-  if (cfg.enabled) {
+  // Double check it's enabled and vehicle is not on before starting the climate control
+  var vehicleOn = OvmsMetrics.Value("v.e.on")
+  if ((cfg.enabled) && (! vehicleOn)) {
     OvmsVehicle.ClimateControl(true)
   }
 }
 
 exports.setEnabled = function(enabled) {
-  var prevEnabled = cfg.enabled
-  cfg.enabled = enabled
   OvmsConfig.Set("usr", "schedule.enabled", enabled)
-  if (enabled == "true" && prevEnabled == "false") {
-    enableAllSchedules()  
-  } else if (enabled == "false" && prevEnabled == "true") {
-    removeAllSchedules()
-  }
 }
 
 exports.getEnabled = function() {
@@ -166,26 +167,19 @@ exports.setStartTimes = function(times) {
   }
   var startArray = times.startTimes
   
-  // Start by clearing out any current schedules and replace with the new set
-  removeAllSchedules()
 
   // Copy the new start times into the saved config
   var len = startArray.length;
-  cfg.startTimes.times = [ ]
+  var startTimes = { times: [] }
   for (var i = 0; i < len; i++) {
-    cfg.startTimes.times.push(startArray[i])
+    startTimes.times.push(startArray[i])
   }
-  OvmsConfig.Set("usr", "schedule.startTimes", JSON.stringify(cfg.startTimes))
-
-  // Only enable the new config if enable is set
-  if (cfg.enabled == "true") {
-    enableAllSchedules()
-  }
+  OvmsConfig.Set("usr", "schedule.startTimes", JSON.stringify(startTimes))
 }
 
 exports.setConfiguration = function(enabled, scheduledTimes) {
   // Temporarily empty the cfg times - the set below will correct them. This way if only the enable is changing there won't be extra work done
-  cfg.startTimes.times = []
+  //cfg.startTimes.times = []
   exports.setEnabled(enabled)
   exports.setStartTimes(scheduledTimes)
 }
@@ -202,4 +196,3 @@ readconfig()
 PubSub.subscribe("config.changed", readconfig)
 PubSub.subscribe("clock.1100", enableFutureSchedules)
 PubSub.subscribe("clock.2300", enableFutureSchedules)
-enableFutureSchedules()
