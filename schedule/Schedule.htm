@@ -76,6 +76,10 @@
 </div>
 
 <script>
+var form = document.getElementById("scheduleform");
+function handleForm(event) { event.preventDefault(); } 
+form.addEventListener('submit', handleForm);
+
 function removeScheduleItem() {
   var parent = this.parentElement.parentElement
   parent.remove()
