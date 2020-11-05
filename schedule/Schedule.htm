@@ -60,6 +60,27 @@
           </tbody>
         </table>
       </div>
+      <div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th width="10%"/>
+              <th width="90%">Charge Start Time</th>
+            <tr>
+          </thead>
+          <tbody id="chargeTableBody">
+            <tr id="deleteChargeButtonRow">
+              <td>
+                <button type="button" class="btn btn-success" onclick="addChargeScheduleItem()">
+                  <strong>+</strong>
+                </button>
+              </td>
+              <td>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <hr />
       <div class="form-group">
         <label class="control-label col-sm-3">Enable Scheduling:</label>
@@ -109,7 +130,7 @@ function addScheduleItem() {
   var tdInput = document.createElement('td');
   var input = document.createElement('input')
   input.type = 'datetime-local'
-  input.name = 'scheduleItem'
+  input.name = 'climateScheduleItem'
   tdInput.appendChild(input)
   tr.appendChild(tdInput)
 
@@ -117,7 +138,42 @@ function addScheduleItem() {
   var tdSchedule = document.createElement('td')
   tr.appendChild(tdSchedule)
 
-  //container.appendChild(tr)
+  container.insertBefore(tr, last)
+  return input
+}
+
+function addChargeTimeSchedule(time) {
+  var inputElement = addChargeScheduleItem()
+  inputElement.value = time
+}
+
+function addChargeScheduleItem() {
+  var container = document.getElementById('chargeTableBody')
+  var tr=document.createElement('tr');
+
+  var tdButton=document.createElement('td');
+  var button = document.createElement('button');
+  button.classList.add('btn')
+  button.classList.add("btn-danger")
+  button.type = 'button'
+  button.onclick=removeScheduleItem
+  var strong=document.createElement('strong');
+  strong.innerHTML = 'X'
+  button.appendChild(strong)
+  tdButton.appendChild(button)
+  tr.appendChild(tdButton)
+
+  var tdInput = document.createElement('td');
+  var input = document.createElement('input')
+  input.type = 'datetime-local'
+  input.name = 'chargeScheduleItem'
+  tdInput.appendChild(input)
+  tr.appendChild(tdInput)
+
+  var last = document.getElementById('deleteChargeButtonRow')
+  var tdSchedule = document.createElement('td')
+  tr.appendChild(tdSchedule)
+
   container.insertBefore(tr, last)
   return input
 }
@@ -132,13 +188,17 @@ loadcmd('script eval schedule.info()').then(function(jsonoutput){
     document.getElementById('scheduleEnabled').checked = false
   }
 
-  for (i = 0; i < cfg.startTimes.times.length; i++) {
-    addTimeSchedule(cfg.startTimes.times[i])
+  for (i = 0; i < cfg.climateStartTimes.times.length; i++) {
+    addTimeSchedule(cfg.climateStartTimes.times[i])
+  }
+
+  for (i = 0; i < cfg.chargeStartTimes.times.length; i++) {
+    addChargeTimeSchedule(cfg.chargeStartTimes.times[i])
   }
 });
 
-function getScheduledTimes() {
-  var schedules = document.getElementsByName('scheduleItem')
+function getScheduledTimes(type) {
+  var schedules = document.getElementsByName(type)
   if (schedules.length == 0) {
     return '""'
   }
@@ -151,8 +211,18 @@ function getScheduledTimes() {
   return JSON.stringify(json)
 }
 
+function getClimateTimes() {
+  return getScheduledTimes('climateScheduleItem')
+}
+
+function getChargeTimes() {
+  return getScheduledTimes('chargeScheduleItem')
+}
+
 function submitConfig(){
   loadcmd('script eval \'schedule.setConfiguration("' + document.getElementById('scheduleEnabled').checked
-          + '", ' + getScheduledTimes() + ')\'') 
+          + '", ' + getClimateTimes()
+          + ', ' + getChargeTimes()
+          + ')\'') 
 };
 </script>
