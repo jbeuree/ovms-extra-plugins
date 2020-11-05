@@ -2,7 +2,7 @@
  * /store/scripts/lib/schedule.js
  * 
  * Module plugin:
- *  Schedule driven climate control.
+ *  Schedule driven climate control and charging.
  * 
  * Version 1.0
  * 
@@ -14,13 +14,14 @@
  * 
  * Config:
  *  - usr schedule.enabled         Master on/off switch
- *  - usr schedule.startTimes      Times to initiate climate control  { startTimes: [ time1, time2, ... ] }
+ *  - usr schedule.climateStartTimes      Times to initiate climate control  { climateStartTimes: [ time1, time2, ... ] }
  * 
  */
 
 var cfg = {
   "enabled":          false,
-  "startTimes":       { "times": [ ] },
+  "climateStartTimes":       { "times": [ ] },
+  "chargeStartTimes":        { "times": [ ] },
 };
 
 var state = {
@@ -39,7 +40,13 @@ function readconfig() {
   } else {
     cfg.enabled = false
   }
-  cfg.startTimes = JSON.parse(cfg.startTimes)
+
+  if (typeof cfg.climateStartTimes === 'string') {
+    cfg.climateStartTimes = JSON.parse(cfg.climateStartTimes)
+  }
+  if (typeof cfg.chargeStartTimes === 'string') {
+    cfg.chargeStartTimes = JSON.parse(cfg.chargeStartTimes)
+  }
 
   // Only enable the new config if enable is set
   if (cfg.enabled) {
@@ -62,10 +69,16 @@ function enableAllSchedules() {
 }
 
 function enableFutureSchedules() {
-  var len = cfg.startTimes.times.length;
+  var len = cfg.climateStartTimes.times.length;
   for (var i = 0; i < len; i++) {
-    addFutureSchedule(cfg.startTimes.times[i])
+    addFutureSchedule(cfg.climateStartTimes.times[i])
   }
+
+  len = cfg.chargeStartTimes.times.length;
+  for (var i = 0; i < len; i++) {
+    addFutureSchedule(cfg.chargeStartTimes.times[i])
+  }
+
 }
 
 function addFutureSchedule(timedate) {
@@ -95,6 +108,7 @@ function alreadySubscribed(eventname) {
 
   while ((!found) && (index < state.monitoredEvents.events.length)) {
     found = (state.monitoredEvents.events[index].name == eventname)
+    ++index
   }
   return found
 }
@@ -106,7 +120,7 @@ function addSchedule(time) {
   if (alreadySubscribed(eventname)) {
     return
   }
-  var id = PubSub.subscribe(eventname, startClimateControl)
+  var id = PubSub.subscribe(eventname, eventHandler)
   state.monitoredEvents.events.push({ name: eventname, id: id })
 }
 
@@ -120,21 +134,37 @@ function getEventName(time) {
   return "clock." + timestr
 }
 
-function startClimateControl(msg, data) {
+function eventHandler(msg, data) {
   // Remove the event that called this
   PubSub.unsubscribe(msg)
 
-  // Remove the corresponding config
+  // Determine if it is climate/charge and remove the corresponding config
+  var charge = false
+  var climate = false
+
+  // Check climate first
   var index = 0
-  while ((index < cfg.startTimes.times.length) && (msg != getEventName(cfg.startTimes.times[index].split("T")[1]))) {
+  while ((index < cfg.climateStartTimes.times.length) && (! climate)) {
+    if (msg == getEventName(cfg.climateStartTimes.times[index].split("T")[1])) {
+      climate = true
+      cfg.climateStartTimes.times.splice(index, 1)
+      OvmsConfig.Set("usr", "schedule.climateStartTimes", JSON.stringify(cfg.climateStartTimes))
+    }
     ++index
   }
-  if (index < cfg.startTimes.times.length) {
-    cfg.startTimes.times.splice(index, 1)
-    OvmsConfig.Set("usr", "schedule.startTimes", JSON.stringify(cfg.startTimes))
+
+  // Check charge
+  index = 0
+  while ((index < cfg.chargeStartTimes.times.length) && (! charge)) {
+    if (msg == getEventName(cfg.chargeStartTimes.times[index].split("T")[1])) {
+      charge = true
+      cfg.chargeStartTimes.times.splice(index, 1)
+      OvmsConfig.Set("usr", "schedule.chargeStartTimes", JSON.stringify(cfg.chargeStartTimes))
+    }
+    ++index
   }
 
- index = 0
+  index = 0
   while ((index < state.monitoredEvents.events.length) && (msg != state.monitoredEvents.events[index].name)) {
     ++index
   }
@@ -142,6 +172,24 @@ function startClimateControl(msg, data) {
     state.monitoredEvents.events.splice(index, 1)
   }
 
+  // Now start some things...
+  if (climate) {
+    startClimateControl()
+  }
+  if (charge) {
+    startCharging()
+  }
+}
+
+function startCharging() {
+  // Double check it's enabled and vehicle is not on before starting to charge
+  var vehicleOn = OvmsMetrics.Value("v.e.on")
+  if ((cfg.enabled) && (! vehicleOn)) {
+    OvmsVehicle.ClimateControl(true)
+  }
+}
+
+function startClimateControl() {
   // Double check it's enabled and vehicle is not on before starting the climate control
   var vehicleOn = OvmsMetrics.Value("v.e.on")
   if ((cfg.enabled) && (! vehicleOn)) {
@@ -156,12 +204,25 @@ exports.setEnabled = function(enabled) {
 exports.getEnabled = function() {
   if (typeof cfg.enabled === 'undefined') {
     return(false)
-  } else {
-    print(cfg.enabled)
   }
 }
 
-exports.setStartTimes = function(times) {
+exports.setClimateStartTimes = function(times) {
+  if (times == "") {
+    times = { startTimes: [] }
+  }
+  var startArray = times.startTimes
+
+  // Copy the new start times into the saved config
+  var len = startArray.length;
+  var climateStartTimes = { times: [] }
+  for (var i = 0; i < len; i++) {
+    climateStartTimes.times.push(startArray[i])
+  }
+  OvmsConfig.Set("usr", "schedule.climateStartTimes", JSON.stringify(climateStartTimes))
+}
+
+exports.setChargeTimes = function(times) {
   if (times == "") {
     times = { startTimes: [] }
   }
@@ -170,18 +231,17 @@ exports.setStartTimes = function(times) {
 
   // Copy the new start times into the saved config
   var len = startArray.length;
-  var startTimes = { times: [] }
+  var chargeStartTimes = { times: [] }
   for (var i = 0; i < len; i++) {
-    startTimes.times.push(startArray[i])
+    chargeStartTimes.times.push(startArray[i])
   }
-  OvmsConfig.Set("usr", "schedule.startTimes", JSON.stringify(startTimes))
+  OvmsConfig.Set("usr", "schedule.chargeStartTimes", JSON.stringify(chargeStartTimes))
 }
 
-exports.setConfiguration = function(enabled, scheduledTimes) {
-  // Temporarily empty the cfg times - the set below will correct them. This way if only the enable is changing there won't be extra work done
-  //cfg.startTimes.times = []
+exports.setConfiguration = function(enabled, scheduledTimes, chargeTimes) {
   exports.setEnabled(enabled)
-  exports.setStartTimes(scheduledTimes)
+  exports.setClimateStartTimes(scheduledTimes)
+  exports.setChargeTimes(chargeTimes)
 }
 
 
@@ -191,7 +251,8 @@ exports.info = function() {
 
 // Init:
 state.monitoring = false
-cfg.startTimes.times = []
+cfg.climateStartTimes.times = []
+cfg.chargeStartTimes.times = []
 readconfig()
 PubSub.subscribe("config.changed", readconfig)
 PubSub.subscribe("clock.1100", enableFutureSchedules)
