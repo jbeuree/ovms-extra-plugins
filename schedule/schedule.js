@@ -48,10 +48,49 @@ function readconfig() {
     cfg.chargeStartTimes = JSON.parse(cfg.chargeStartTimes)
   }
 
+  // Remove any items in the past
+  clearOldSchedules()
+
   // Only enable the new config if enable is set
   if (cfg.enabled) {
     enableAllSchedules()
   }
+}
+
+function itemInPast(timedate) {
+  var now = new Date()
+  // Append the current time offset to the new one so they can be compared
+  var offset = ("" + now).substring(23)
+
+  // Only add if within the next 24h
+  var checkTime = new Date(timedate + offset)
+
+  if (checkTime < now) {
+    return true
+  }
+
+  return false
+}
+
+function clearOldSchedules() {
+  // Go through each, make a copy and remove any past items
+  var len = cfg.climateStartTimes.times.length;
+  var arrayCopy = []
+  for (var i = 0; i < len; i++) {
+    if (! itemInPast(cfg.climateStartTimes.times[i])) {
+      arrayCopy.push(cfg.climateStartTimes.times[i])
+    }
+  }
+  cfg.climateStartTimes.times = arrayCopy.slice()
+
+  arrayCopy = []
+  len = cfg.chargeStartTimes.times.length;
+  for (var i = 0; i < len; i++) {
+    if (! itemInPast(cfg.chargeStartTimes.times[i])) {
+      arrayCopy.push(cfg.chargeStartTimes.times[i])
+    }
+  }
+  cfg.chargeStartTimes.times = arrayCopy.slice()
 }
 
 function removeAllSchedules() {
@@ -148,18 +187,17 @@ function eventHandler(msg, data) {
     if (msg == getEventName(cfg.climateStartTimes.times[index].split("T")[1])) {
       climate = true
       cfg.climateStartTimes.times.splice(index, 1)
-      OvmsConfig.Set("usr", "schedule.climateStartTimes", JSON.stringify(cfg.climateStartTimes))
     }
     ++index
   }
 
   // Check charge
   index = 0
+  var updatedClimate = false
   while ((index < cfg.chargeStartTimes.times.length) && (! charge)) {
     if (msg == getEventName(cfg.chargeStartTimes.times[index].split("T")[1])) {
       charge = true
       cfg.chargeStartTimes.times.splice(index, 1)
-      OvmsConfig.Set("usr", "schedule.chargeStartTimes", JSON.stringify(cfg.chargeStartTimes))
     }
     ++index
   }
@@ -175,16 +213,25 @@ function eventHandler(msg, data) {
   // Now start some things...
   if (climate) {
     startClimateControl()
+    OvmsConfig.Set("usr", "schedule.climateStartTimes", JSON.stringify(cfg.climateStartTimes))
   }
   if (charge) {
     startCharging()
+    OvmsConfig.Set("usr", "schedule.chargeStartTimes", JSON.stringify(cfg.chargeStartTimes))
   }
 }
 
 function startCharging() {
-  // Double check it's enabled and vehicle is not on before starting to charge
+  // Double check: it's enabled, vehicle is not on, not already charging, and charger is connected before starting to charge
   var vehicleOn = OvmsMetrics.Value("v.e.on")
-  if ((cfg.enabled) && (! vehicleOn)) {
+
+  var chargePilot = OvmsMetrics.Value("v.c.pilot")
+  var charging = OvmsMetrics.Value("v.c.charging")
+
+  print("Pilot: " + chargePilot + "\n")
+  print("Charging: " + charging + "\n")
+
+  if ((cfg.enabled) && (! vehicleOn) && (chargePilot) && (! charging)) {
     OvmsVehicle.ClimateControl(true)
   }
 }
@@ -192,6 +239,7 @@ function startCharging() {
 function startClimateControl() {
   // Double check it's enabled and vehicle is not on before starting the climate control
   var vehicleOn = OvmsMetrics.Value("v.e.on")
+
   if ((cfg.enabled) && (! vehicleOn)) {
     OvmsVehicle.ClimateControl(true)
   }
